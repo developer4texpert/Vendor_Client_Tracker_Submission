@@ -1,0 +1,106 @@
+/* Fullscreen Background */
+.login-container {
+  height: 100vh;
+  width: 100%;
+  background: url("https://images.unsplash.com/photo-1556761175-4b46a572b786") no-repeat center center/cover;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: "Poppins", sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Dark overlay for better text visibility */
+.login-overlay {
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 10, 10, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Glassmorphism Form */
+.login-form {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 40px;
+  max-width: 400px;
+  width: 100%;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  text-align: center;
+  animation: slideUp 1s ease-in-out;
+}
+
+/* Title */
+.logo {
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 10px;
+}
+
+.logo span {
+  color: #00d4ff;
+}
+
+.welcome {
+  margin-bottom: 20px;
+  color: #ddd;
+  font-style: italic;
+}
+
+/* Buttons */
+.btn-signin {
+  margin-top: 20px !important;
+  background: linear-gradient(90deg, #00c6ff, #0072ff) !important;
+  color: white !important;
+  font-weight: bold !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+.btn-signin:hover {
+  transform: translateY(-2px);
+}
+
+.btn-cancel {
+  margin-top: 10px !important;
+  border-color: #ff4e50 !important;
+  color: #ff4e50 !important;
+  font-weight: bold !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+.btn-cancel:hover {
+  background: #ff4e50 !important;
+  color: #fff !important;
+}
+
+/* Forgot link */
+.forgot {
+  margin-top: 15px;
+}
+
+.forgot a {
+  color: #00d4ff;
+  text-decoration: none;
+}
+
+.forgot a:hover {
+  text-decoration: underline;
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
