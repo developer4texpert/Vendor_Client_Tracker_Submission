@@ -3,9 +3,11 @@ from django.contrib.auth.models import User
 
 class Client(models.Model):
     name = models.CharField(max_length=255)
+    street_address = models.CharField(max_length=255, blank=True, null=True) 
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
+    zipcode = models.CharField(max_length=20, blank=True, null=True)
     contact_name = models.CharField(max_length=255, blank=True, null=True)
     contact_email = models.EmailField(blank=True, null=True)
     contact_phone = models.CharField(max_length=20, blank=True, null=True)
