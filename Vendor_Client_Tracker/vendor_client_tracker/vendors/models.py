@@ -7,10 +7,11 @@ class Vendor(models.Model):
     )
 
     name = models.CharField(max_length=255, unique=True)
+    street_address = models.CharField(max_length=255, blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
-    website = models.URLField(blank=True, null=True)
+    zipcode = models.CharField(max_length=20, blank=True, null=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
