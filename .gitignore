@@ -1,0 +1,16 @@
+# Node.js
+node_modules/
+npm-debug.log
+.env
+
+# Python
+venv/
+__pycache__/
+
+# Build
+dist/
+build/
+
+# OS junk
+.DS_Store
+Thumbs.db
