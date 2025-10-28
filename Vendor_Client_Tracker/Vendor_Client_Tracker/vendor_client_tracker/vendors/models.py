@@ -12,6 +12,7 @@ class Vendor(models.Model):
     state = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
     zipcode = models.CharField(max_length=20, blank=True, null=True)
+    linkedin_url = models.URLField(max_length=500, blank=True, null=True, verbose_name="LinkedIn URL")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
     notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

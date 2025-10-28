@@ -21,6 +21,7 @@ import {
   IconButton,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { useNavigate } from "react-router-dom";
 import coreApi from "../../api/core";
 
 const ClientVendors = ({ clientId }) => {
@@ -34,6 +35,8 @@ const ClientVendors = ({ clientId }) => {
   const [selectedVendor, setSelectedVendor] = useState("");
   const [role, setRole] = useState("");
   const [detachVendorId, setDetachVendorId] = useState(null);
+  const navigate = useNavigate();
+
 
   // ✅ Fetch vendors already attached to client
   const fetchVendors = async () => {
@@ -171,7 +174,19 @@ const ClientVendors = ({ clientId }) => {
               <Paper sx={{ p: 2, borderRadius: 2 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Box>
-                    <Typography fontWeight={600}>{link.vendor?.name}</Typography>
+                    <Typography
+                      fontWeight={600}
+                      sx={{
+                        color: "primary.main",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        "&:hover": { color: "primary.dark" },
+                      }}
+                      onClick={() => navigate(`/dashboard/vendors/${link.vendor?.id}`)}
+                    >
+                      {link.vendor?.name}
+                    </Typography>
+
                     <Typography variant="body2" color="text.secondary">
                       Role: {link.role || "-"}
                     </Typography>

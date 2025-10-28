@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import VendorStatsView
 
 urlpatterns = [
     path('AddVendor/', views.add_vendor, name='add_vendor'),
@@ -11,6 +12,7 @@ urlpatterns = [
     path('GetVendorContacts/<int:vendor_id>/', views.get_vendor_contacts, name='get_vendor_contacts'),
     path('UpdateVendorContact/', views.update_vendor_contact, name='update_vendor_contact'),
     path('DeleteVendorContact/', views.delete_vendor_contact, name='delete_vendor_contact'),
+    path("VendorStats/", VendorStatsView.as_view(), name="vendor-stats"),
     # Vendor Address APIs (body-based)
 path('AddVendorAddress/', views.add_vendor_address, name='add_vendor_address'),
 path('GetVendorAddresses/', views.get_vendor_addresses, name='get_vendor_addresses'),

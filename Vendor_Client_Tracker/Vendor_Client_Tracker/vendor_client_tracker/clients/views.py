@@ -19,6 +19,54 @@ from .serializers import (
     VendorSerializer
 )
 
+class SearchClientView(APIView):
+    """
+    POST /clients/SearchClient/
+    Filter clients by City, State, and Vendor (name or id).
+
+    Example Body:
+    {
+        "city": "Dallas",
+        "state": "TX",
+        "vendor_name": "TechConnect"
+    }
+    """
+
+    def post(self, request):
+        data = request.data
+        clients = Client.objects.all()
+
+        # 🔹 Filter by City
+        city = data.get('city')
+        if city:
+            clients = clients.filter(city__icontains=city)
+
+        # 🔹 Filter by State
+        state = data.get('state')
+        if state:
+            clients = clients.filter(state__icontains=state)
+
+        # 🔹 Filter by Vendor (using link table)
+        vendor_id = data.get('vendor_id')
+        vendor_name = data.get('vendor_name')
+
+        if vendor_id or vendor_name:
+            vendor_links = ClientVendorLink.objects.all()
+
+            if vendor_id:
+                vendor_links = vendor_links.filter(vendor_id=vendor_id)
+            if vendor_name:
+                vendor_links = vendor_links.filter(vendor__name__icontains=vendor_name)
+
+            client_ids = vendor_links.values_list('client_id', flat=True).distinct()
+            clients = clients.filter(id__in=client_ids)
+
+        serializer = ClientSerializer(clients.distinct(), many=True)
+        return Response({
+            "count": clients.count(),
+            "results": serializer.data
+        }, status=status.HTTP_200_OK)
+
 class DomainListAPI(APIView):
     def get(self, request):
         data = [{"id": i + 1, "name": d} for i, d in enumerate(DOMAIN_CHOICES)]
@@ -134,21 +182,6 @@ class DeleteClientAddressView(APIView):
         return Response({"message": "Address deleted successfully"}, status=200)
 
 
-class SearchClientView(APIView):
-    def get(self, request):
-        query = request.query_params.get('query', None)
-        if query:
-            clients = Client.objects.filter(
-                Q(name__icontains=query) |
-                Q(city__icontains=query) |
-                Q(contact_name__icontains=query) |
-                Q(contact_email__icontains=query)
-            )
-        else:
-            clients = Client.objects.all()
-
-        serializer = ClientSerializer(clients, many=True)
-        return Response(serializer.data)
 
 
 class AttachVendorToClientView(APIView):

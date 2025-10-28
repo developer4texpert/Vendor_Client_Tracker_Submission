@@ -34,7 +34,7 @@ const AddVendorModal = ({ open, onClose }) => {
         country: "",
         zipcode: "",
         status: "active",
-        website: "",
+        linkedin_url: "",
         notes: "",
     });
 
@@ -63,7 +63,7 @@ const AddVendorModal = ({ open, onClose }) => {
             country: "",
             zipcode: "",
             status: "active",
-            website: "",
+            linkedin_url: "",
             notes: "",
         });
         onClose();
@@ -107,109 +107,110 @@ const AddVendorModal = ({ open, onClose }) => {
             <Dialog open={open} onClose={handleCancel} maxWidth="sm" fullWidth>
                 <DialogTitle sx={{ fontWeight: "bold" }}>Add New Vendor</DialogTitle>
                 <DialogContent dividers sx={{ position: "relative" }}>
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                            <TextField
-                                label="Vendor Name"
-                                name="name"
-                                value={formData.name}
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <TextField
+                            label="Vendor Name"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            required
+                        />
+                        <TextField
+                            label="Street Address"
+                            name="street_address"
+                            value={formData.street_address}
+                            onChange={handleChange}
+                        />
+                        <TextField
+                            label="City"
+                            name="city"
+                            value={formData.city}
+                            onChange={handleChange}
+                        />
+                        <FormControl fullWidth>
+                            <InputLabel id="state-label">State</InputLabel>
+                            <Select
+                                labelId="state-label"
+                                name="state"
+                                value={formData.state}
                                 onChange={handleChange}
-                                required
-                            />
-                            <TextField
-                                label="Street Address"
-                                name="street_address"
-                                value={formData.street_address}
-                                onChange={handleChange}
-                            />
-                            <TextField
-                                label="City"
-                                name="city"
-                                value={formData.city}
-                                onChange={handleChange}
-                            />
-                            <FormControl fullWidth>
-                                <InputLabel id="state-label">State</InputLabel>
-                                <Select
-                                    labelId="state-label"
-                                    name="state"
-                                    value={formData.state}
-                                    onChange={handleChange}
-                                >
-                                    {statesLoading ? (
-                                        <MenuItem disabled>Loading states...</MenuItem>
-                                    ) : (
-                                        states.map((s) => (
-                                            <MenuItem key={s.abbr} value={s.abbr}>
-                                                {s.name} ({s.abbr})
-                                            </MenuItem>
-                                        ))
-                                    )}
-                                </Select>
-                            </FormControl>
-                            <TextField
-                                label="Country"
-                                name="country"
-                                value={formData.country}
-                                onChange={handleChange}
-                            />
-                            <TextField
-                                label="Zip Code"
-                                name="zipcode"
-                                value={formData.zipcode}
-                                onChange={handleChange}
-                            />
-                            <TextField
-                                select
-                                label="Status"
-                                name="status"
-                                value={formData.status}
-                                onChange={handleChange}
-                                fullWidth
                             >
-                                <MenuItem value="active">Active</MenuItem>
-                                <MenuItem value="inactive">Inactive</MenuItem>
-                            </TextField>
-                            <TextField
-                                label="Website"
-                                name="website"
-                                value={formData.website}
-                                onChange={handleChange}
-                                placeholder="example.com"
-                            />
-                            <TextField
-                                label="Notes"
-                                name="notes"
-                                value={formData.notes}
-                                onChange={handleChange}
-                                fullWidth
-                                multiline
-                                minRows={3}
-                            />
+                                {statesLoading ? (
+                                    <MenuItem disabled>Loading states...</MenuItem>
+                                ) : (
+                                    states.map((s) => (
+                                        <MenuItem key={s.abbr} value={s.abbr}>
+                                            {s.name} ({s.abbr})
+                                        </MenuItem>
+                                    ))
+                                )}
+                            </Select>
+                        </FormControl>
+                        <TextField
+                            label="Country"
+                            name="country"
+                            value={formData.country}
+                            onChange={handleChange}
+                        />
+                        <TextField
+                            label="Zip Code"
+                            name="zipcode"
+                            value={formData.zipcode}
+                            onChange={handleChange}
+                        />
+                        <TextField
+                            select
+                            label="Status"
+                            name="status"
+                            value={formData.status}
+                            onChange={handleChange}
+                            fullWidth
+                        >
+                            <MenuItem value="active">Active</MenuItem>
+                            <MenuItem value="inactive">Inactive</MenuItem>
+                        </TextField>
+                        <TextField
+                            label="LinkedIn URL"
+                            name="linkedin_url"
+                            value={formData.linkedin_url}
+                            onChange={handleChange}
+                            placeholder="Linkdein URL"
+                            fullWidth
+                        />
+                        <TextField
+                            label="Notes"
+                            name="notes"
+                            value={formData.notes}
+                            onChange={handleChange}
+                            fullWidth
+                            multiline
+                            minRows={3}
+                        />
+                    </Box>
+                    {/* ✅ Overlay loader */}
+                    {saving && (
+                        <Box
+                            sx={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                width: "100%",
+                                height: "100%",
+                                backgroundColor: "rgba(255,255,255,0.6)", // translucent background
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexDirection: "column",
+                                zIndex: 10,
+                            }}
+                        >
+                            <CircularProgress size={50} />
+                            <Typography variant="body2" sx={{ mt: 2 }}>
+                                Processing...
+                            </Typography>
                         </Box>
-                {/* ✅ Overlay loader */}
-  {saving && (
-    <Box
-      sx={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        backgroundColor: "rgba(255,255,255,0.6)", // translucent background
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        zIndex: 10,
-      }}
-    >
-      <CircularProgress size={50} />
-      <Typography variant="body2" sx={{ mt: 2 }}>
-        Processing...
-      </Typography>
-    </Box>
-  )}
-        </DialogContent>
+                    )}
+                </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCancel} color="error">
                         Cancel

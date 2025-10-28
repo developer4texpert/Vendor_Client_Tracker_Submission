@@ -1,4 +1,5 @@
 import React from "react";
-export default function Consultants() {
+
+export default function ConsultantsPage() {
   return <div>Consultants Page</div>;
 }

@@ -2,10 +2,36 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.views import APIView
 from .models import Vendor
 from .serializers import VendorSerializer, VendorContactSerializer, VendorAddressSerializer
 
-@api_view(['POST'])
+# ---------- Vendor Statistics ----------
+class VendorStatsView(APIView):
+    """
+    GET /vendor/VendorStats/
+    Returns total, active, and inactive vendor counts + list.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        vendors = Vendor.objects.all().values("id", "name", "status", "updated_at")
+
+        total_vendors = vendors.count()
+        active_vendors = vendors.filter(status="active").count()
+        inactive_vendors = vendors.filter(status="inactive").count()
+
+        summary = {
+            "total_vendors": total_vendors,
+            "active_vendors": active_vendors,
+            "inactive_vendors": inactive_vendors,
+        }
+
+        return Response(
+            {"summary": summary, "vendors": list(vendors)},
+            status=status.HTTP_200_OK
+        )
+
 @permission_classes([IsAuthenticated])
 def add_vendor(request):
     serializer = VendorSerializer(data=request.data)

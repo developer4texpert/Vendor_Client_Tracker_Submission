@@ -10,9 +10,13 @@ import Clients from "./components/Clients/Clients";
 import ClientDetails from "./components/Clients/ClientDetails";
 import Vendors from "./components/Vendors/Vendors";
 import VendorDetails from "./components/Vendors/VendorDetails";
-import Consultants from "./components/Consultants/Consultants";
 import History from "./components/History/History";
 import AddClient from "./components/Clients/AddClientModal";
+
+// ✅ New Sales module imports
+import ConsultantsPage from "./components/Sales/Consultants/ConsultantsPage";
+import SubmissionsPage from "./components/Sales/Submissions/SubmissionsPage";
+import InterviewsPage from "./components/Sales/Interviews/InterviewsPage";
 
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem("access");
@@ -51,7 +55,12 @@ function App() {
             <Route path="clients/:id" element={<ClientDetails />} />
             <Route path="vendors" element={<Vendors />} />
             <Route path="vendors/:id" element={<VendorDetails />} />
-            <Route path="consultants" element={<Consultants />} />
+
+            {/* ✅ New Sales sub-routes */}
+            <Route path="sales/consultants" element={<ConsultantsPage />} />
+            <Route path="sales/submissions" element={<SubmissionsPage />} />
+            <Route path="sales/interviews" element={<InterviewsPage />} />
+
             <Route path="history" element={<History />} />
           </Route>
         </Routes>

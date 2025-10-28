@@ -22,7 +22,18 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('client/', include('clients.urls')),  # Include clients app URLs
-    path('vendor/', include("vendors.urls")), # Include vendor app URLs
+    path('vendor/', include("vendors.urls")),
+    path('adminpanel/', include("adminpanel.urls")),
+    path('sale/', include("sales.urls")),
+    
+
+    
+    # Include vendor app URLs
+    
+   
+    
+
+   
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("states/", StatesListAPI.as_view(), name="states-list"),  # 👈 global API

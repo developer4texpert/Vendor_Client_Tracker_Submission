@@ -271,9 +271,26 @@ const VendorDetails = () => {
               </Typography>
 
               <Typography fontWeight={600} sx={{ mt: 2 }}>
-                Website
+                LinkedIn URL
               </Typography>
-              <Typography variant="body2">{vendor.website || "-"}</Typography>
+              {vendor.linkedin_url ? (
+                <Typography variant="body2">
+                  <a
+                    href={vendor.linkedin_url.startsWith("http")
+                      ? vendor.linkedin_url
+                      : `https://${vendor.linkedin_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "#0A66C2", textDecoration: "none", fontWeight: 500 }}
+                  >
+                    {vendor.linkedin_url}
+                  </a>
+                </Typography>
+              ) : (
+                <Typography variant="body2">-</Typography>
+              )}
+
+
 
               <Typography fontWeight={600} sx={{ mt: 2 }}>
                 Notes
@@ -349,13 +366,15 @@ const VendorDetails = () => {
               />
 
               <TextField
-                label="Website"
+                label="LinkedIn URL"
                 size="small"
                 fullWidth
-                value={vendor.website || ""}
-                onChange={(e) => setVendor({ ...vendor, website: e.target.value })}
+                value={vendor.linkedin_url || ""}
+                onChange={(e) => setVendor({ ...vendor, linkedin_url: e.target.value })}
+                placeholder="https://www.linkedin.com/company/vendor-name/"
                 sx={{ gridColumn: "1 / -1" }}
               />
+
               <TextField
                 label="Notes"
                 size="small"

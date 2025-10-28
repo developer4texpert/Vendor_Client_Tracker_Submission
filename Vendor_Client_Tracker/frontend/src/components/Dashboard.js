@@ -1,15 +1,16 @@
 // src/components/Dashboard.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Drawer,
   List,
-  ListItem,
   ListItemIcon,
   ListItemText,
+  ListItemButton,
   Typography,
-  Grid,
+  Popover,
   Divider,
+  Chip,
 } from "@mui/material";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import BusinessIcon from "@mui/icons-material/Business";
@@ -22,71 +23,205 @@ import coreApi from "../api/core";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { BarChart } from "@mui/x-charts/BarChart";
 
-const drawerWidth = 220;
 
-const Dashboard = () => {
+const drawerWidth = 200;
+
+/* ===== Compact tuning ===== */
+const PAD = 1;               // card padding
+const GAP = 1;               // grid gap (theme spacing)
+const CHART_H = 220;         // compact chart height
+const TITLE_MB = 0.5;
+
+/* Stable width hook: ignores micro changes to prevent pie jitter */
+function useElementWidth() {
+  const ref = useRef(null);
+  const last = useRef(0);
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    let raf = 0;
+    const ro = new ResizeObserver(([entry]) => {
+      const raw =
+        entry.contentBoxSize &&
+        (Array.isArray(entry.contentBoxSize)
+          ? entry.contentBoxSize[0]?.inlineSize
+          : entry.contentBoxSize.inlineSize);
+      const next = Math.round(raw ?? el.clientWidth);
+      if (Math.abs(next - last.current) < 4) return; // ignore micro-jitter
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        last.current = next;
+        setW(next);
+      });
+    });
+    ro.observe(el);
+    last.current = el.clientWidth;
+    setW(el.clientWidth);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, []);
+  return [ref, w];
+}
+
+const Card = ({ children, sx }) => (
+  <Box
+    sx={{
+      p: PAD,
+      borderRadius: 2,
+      bgcolor: "#fff",
+      border: "1px solid #e5e7eb",
+      boxShadow: "0 1px 2px rgba(16,24,40,0.04)",
+      ...sx,
+    }}
+  >
+    {children}
+  </Box>
+);
+
+const KPI = ({ label, value, color }) => (
+  <Box
+    sx={{
+      p: 0.75,
+      borderRadius: 1.5,
+      bgcolor: "#fff",
+      border: "1px solid #e5e7eb",
+      display: "flex",
+      alignItems: "center",
+      gap: 1,
+      minWidth: 150,
+      justifyContent: "space-between",
+    }}
+  >
+    <Typography variant="subtitle1" sx={{ fontWeight: 800, color, lineHeight: 1 }}>
+      {value}
+    </Typography>
+    <Typography variant="caption" sx={{ color: "#475467", fontWeight: 700 }}>
+      {label}
+    </Typography>
+  </Box>
+);
+
+const drawerItems = [
+  { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
+  { text: "Clients", icon: <BusinessIcon />, path: "/dashboard/clients" },
+  { text: "Vendors", icon: <StorefrontIcon />, path: "/dashboard/vendors" },
+
+  // 🔹 New Sales Section
+  {
+    text: "Sales",
+    icon: <GroupsIcon />,
+    children: [
+      { text: "Consultants", path: "/dashboard/sales/consultants" },
+      { text: "Submissions", path: "/dashboard/sales/submissions" },
+      { text: "Interviews", path: "/dashboard/sales/interviews" },
+    ],
+  },
+
+  { text: "History", icon: <HistoryIcon />, path: "/dashboard/history" },
+];
+
+
+export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const isRootDashboard = location.pathname === "/dashboard";
 
+  /* Data */
   const [stats, setStats] = useState(null);
-  const [loadingStats, setLoadingStats] = useState(true);
   const [recentClients, setRecentClients] = useState([]);
+  const [vendorStats, setVendorStats] = useState(null);
+
+    // === State for hover submenu ===
+  const [openMenu, setOpenMenu] = useState(null);
+  const handleMenuOpen = (text, anchor) => setOpenMenu({ text, anchor });
+  const handleMenuClose = () => setOpenMenu(null);
+
+  /* Responsive widths for each chart tile */
+  const [clientBarRef, clientBarW] = useElementWidth();
+  const [vendorBarRef, vendorBarW] = useElementWidth();
+  const [clientPieRef, clientPieW] = useElementWidth();
+  const [vendorPieRef, vendorPieW] = useElementWidth();
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const res = await coreApi.get("client/ClientStats/", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("access")}` },
-        });
-        setStats(res.data);
-      } catch (err) {
-        console.error("❌ Failed to load client stats", err);
-      } finally {
-        setLoadingStats(false);
-      }
-    };
-
-    const fetchRecentClients = async () => {
-  try {
-    const res = await coreApi.get("client/GetClient/", {
+    const authHeader = {
       headers: { Authorization: `Bearer ${localStorage.getItem("access")}` },
-    });
-
-    if (Array.isArray(res.data)) {
-      // sort newest first by created_at or id
-      const sorted = [...res.data].sort(
-        (a, b) => new Date(b.created_at) - new Date(a.created_at)
-      );
-      setRecentClients(sorted.slice(0, 3)); // ✅ always latest 3
-    }
-  } catch (err) {
-    console.error("❌ Failed to load recent clients", err);
-  }
-};
-
-
-    fetchStats();
-    fetchRecentClients();
-    const listener = () => fetchRecentClients();
-  window.addEventListener("clientAdded", listener);
-
-  return () => window.removeEventListener("clientAdded", listener);
+    };
+    (async () => {
+      try {
+        const [cStats, cList, vStats] = await Promise.all([
+          coreApi.get("client/ClientStats/", authHeader),
+          coreApi.get("client/GetClient/", authHeader),
+          coreApi.get("vendor/VendorStats/", authHeader),
+        ]);
+        setStats(cStats.data);
+        if (Array.isArray(cList.data)) {
+          const sorted = [...cList.data].sort(
+            (a, b) => new Date(b.created_at) - new Date(a.created_at)
+          );
+          setRecentClients(sorted.slice(0, 5)); // show more, still compact
+        }
+        setVendorStats(vStats.data?.summary || null);
+      } catch {}
+    })();
   }, []);
 
-  const chartData = stats
-    ? [
-        { id: 0, value: stats.clients_with_vendors, label: "With Vendors" },
-        { id: 1, value: stats.clients_without_vendors, label: "Without Vendors" },
-      ]
-    : [];
+  /* Figures */
+  const clientPie = useMemo(
+    () =>
+      stats
+        ? [
+            { id: 0, value: +stats.clients_with_vendors || 0, label: "With Vendors" },
+            { id: 1, value: +stats.clients_without_vendors || 0, label: "Without Vendors" },
+          ]
+        : [],
+    [stats]
+  );
 
-  const barData = [
-    { month: "Jan", clients: 12 },
-    { month: "Feb", clients: 19 },
-    { month: "Mar", clients: 7 },
-    { month: "Apr", clients: 15 },
-  ];
+  const vendorPie = useMemo(
+    () =>
+      vendorStats
+        ? [
+            { id: 0, value: +vendorStats.active_vendors || 0, label: "Active" },
+            { id: 1, value: +vendorStats.inactive_vendors || 0, label: "Inactive" },
+          ]
+        : [],
+    [vendorStats]
+  );
+
+  /* Example mini time series (replace with API if you have it) */
+  const clientsMonthlyBar = useMemo(
+    () => [
+      { m: "Jan", v: 12 },
+      { m: "Feb", v: 19 },
+      { m: "Mar", v: 7 },
+      { m: "Apr", v: 15 },
+      { m: "May", v: 11 },
+      { m: "Jun", v: 18 },
+    ],
+    []
+  );
+  const vendorsMonthlyBar = useMemo(
+    () => [
+      { m: "Jan", v: 6 },
+      { m: "Feb", v: 4 },
+      { m: "Mar", v: 7 },
+      { m: "Apr", v: 3 },
+      { m: "May", v: 8 },
+      { m: "Jun", v: 5 },
+    ],
+    []
+  );
+
+  const perf =
+    stats && stats.total_clients
+      ? `${(
+          (+stats.clients_with_vendors / (+stats.total_clients || 1)) *
+          100
+        ).toFixed(1)}%`
+      : "--";
 
   const handleLogout = () => {
     localStorage.removeItem("access");
@@ -94,9 +229,22 @@ const Dashboard = () => {
     navigate("/");
   };
 
+  /* Common pie props: lock legend to bottom to avoid layout shifts */
+  const pieCommon = {
+    height: CHART_H,
+    margin: { top: 6, right: 6, bottom: 6, left: 6 },
+    slotProps: {
+      legend: {
+        position: { vertical: "bottom", horizontal: "middle" },
+        direction: "row",
+      },
+    },
+    // animation: false, // uncomment if your @mui/x-charts supports it
+  };
+
   return (
-    <Box sx={{ display: "flex", bgcolor: "#f8fafc", minHeight: "100vh" }}>
-      {/* Sidebar */}
+    <Box sx={{ display: "flex", bgcolor: "#f4f6f8", minHeight: "100vh" }}>
+      {/* Sidebar (compact) */}
       <Drawer
         variant="permanent"
         sx={{
@@ -110,179 +258,249 @@ const Dashboard = () => {
           },
         }}
       >
-        <Box sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+        <Box sx={{ p: 1.25 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: 0.2, lineHeight: 1 }}>
             VC Tracker
           </Typography>
         </Box>
-        <Divider sx={{ bgcolor: "rgba(255,255,255,0.3)" }} />
+        <Divider sx={{ bgcolor: "rgba(255,255,255,0.2)" }} />
+        <List dense sx={{ py: 0 }}>
+  {drawerItems.map((item) => {
+    if (item.children) {
+      return (
+        <Box
+  key={item.text}
+  onMouseEnter={(e) => handleMenuOpen(item.text, e.currentTarget)}
+  onMouseLeave={handleMenuClose} // 👈 closes immediately when mouse leaves both button & popover
+>
+  {/* Main Sales Button */}
+  <ListItemButton
+    sx={{
+      borderRadius: 1,
+      mx: 0.5,
+      my: 0.25,
+      minHeight: 36,
+      "&:hover": { background: "rgba(255,255,255,0.22)" },
+    }}
+  >
+    <ListItemIcon sx={{ color: "#fff", minWidth: 30 }}>{item.icon}</ListItemIcon>
+    <ListItemText
+      primaryTypographyProps={{ variant: "body2", fontWeight: 700 }}
+      primary={item.text}
+    />
+  </ListItemButton>
 
-        <List>
-          {[
-            { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
-            { text: "Clients", icon: <BusinessIcon />, path: "/dashboard/clients" },
-            { text: "Vendors", icon: <StorefrontIcon />, path: "/dashboard/vendors" },
-            { text: "Consultants", icon: <GroupsIcon />, path: "/dashboard/consultants" },
-            { text: "History", icon: <HistoryIcon />, path: "/dashboard/history" },
-          ].map((item) => (
-            <ListItem
-              button
-              key={item.text}
-              component={NavLink}
-              to={item.path}
-              style={({ isActive }) => ({
-                background: isActive ? "rgba(255,255,255,0.2)" : "transparent",
-              })}
-            >
-              <ListItemIcon sx={{ color: "#fff" }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
-            </ListItem>
-          ))}
-        </List>
+  {/* Hover Popup */}
+  <Popover
+    open={openMenu?.text === item.text}
+    anchorEl={openMenu?.anchor}
+    onClose={handleMenuClose}
+    disableRestoreFocus
+    anchorOrigin={{ vertical: "top", horizontal: "right" }}
+    transformOrigin={{ vertical: "top", horizontal: "left" }}
+    PaperProps={{
+      onMouseEnter: () => {}, // no delay needed
+      onMouseLeave: handleMenuClose, // 👈 close immediately when leaving submenu
+      sx: {
+        background: "#0ea5e9",
+        color: "#fff",
+        mt: "2px",
+        borderRadius: 1.5,
+        minWidth: 160,
+      },
+    }}
+  >
+    {item.children.map((sub) => (
+      <ListItemButton
+        key={sub.text}
+        component={NavLink}
+        to={sub.path}
+        onClick={handleMenuClose}
+        sx={{
+          "&.active": { background: "rgba(255,255,255,0.22)" },
+          "&:hover": { background: "rgba(255,255,255,0.2)" },
+          color: "#fff",
+          py: 0.8,
+        }}
+      >
+        <ListItemText
+          primaryTypographyProps={{ variant: "body2" }}
+          primary={sub.text}
+        />
+      </ListItemButton>
+    ))}
+  </Popover>
+</Box>
+
+      );
+    }
+
+    // ✅ Regular menu items (Dashboard, Clients, Vendors, History)
+    return (
+      <ListItemButton
+        key={item.text}
+        component={NavLink}
+        to={item.path}
+        sx={{
+          borderRadius: 1,
+          mx: 0.5,
+          my: 0.25,
+          minHeight: 36,
+          "&.active": { background: "rgba(255,255,255,0.22)" },
+        }}
+      >
+        <ListItemIcon sx={{ color: "#fff", minWidth: 30 }}>{item.icon}</ListItemIcon>
+        <ListItemText primaryTypographyProps={{ variant: "body2" }} primary={item.text} />
+      </ListItemButton>
+    );
+  })}
+</List>
+
+
 
         <Box sx={{ flexGrow: 1 }} />
-        <List>
-          <ListItem button onClick={handleLogout}>
-            <ListItemIcon sx={{ color: "#fff" }}>
+        <List dense sx={{ py: 0 }}>
+          <ListItemButton onClick={handleLogout} sx={{ mx: 0.5, mb: 1, borderRadius: 1, minHeight: 36 }}>
+            <ListItemIcon sx={{ color: "#fff", minWidth: 30 }}>
               <LogoutIcon />
             </ListItemIcon>
-            <ListItemText primary="Logout" />
-          </ListItem>
+            <ListItemText primaryTypographyProps={{ variant: "body2" }} primary="Logout" />
+          </ListItemButton>
         </List>
       </Drawer>
 
-      {/* Main Content */}
-      <Box sx={{ flexGrow: 1, p: 4 }}>
+      {/* Main */}
+      <Box sx={{ flexGrow: 1, px: 2, py: 1 }}>
         {isRootDashboard ? (
           <>
-            {/* Row 1: Info Cards */}
-            <Grid container spacing={3}>
-              {[
-                {
-                  label: "Total Clients",
-                  value: stats ? stats.total_clients : "--",
-                  color: "#1d4ed8",
-                  change: "+5% since yesterday",
+            {/* Header + compact KPIs row */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1 }}>
+                Dashboard
+              </Typography>
+              <Chip label="Live" size="small" color="success" />
+            </Box>
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "repeat(2, minmax(0,1fr))",
+                  md: "repeat(4, minmax(0,1fr))",
                 },
-                {
-                  label: "With Vendors",
-                  value: stats ? stats.clients_with_vendors : "--",
-                  color: "#16a34a",
-                  change: "+2% since last week",
+                gap: GAP,
+                mb: 1,
+              }}
+            >
+              <KPI label="Total Clients" value={stats?.total_clients ?? "--"} color="#1d4ed8" />
+              <KPI label="With Vendors" value={stats?.clients_with_vendors ?? "--"} color="#16a34a" />
+              <KPI label="Without Vendors" value={stats?.clients_without_vendors ?? "--"} color="#dc2626" />
+              <KPI label="Performance" value={perf} color="#0891b2" />
+            </Box>
+
+            {/* ===== NEW TILE LAYOUT (no gaps) ===== */}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "1fr",
+                  lg: "1.2fr 1fr", // wider left column for both bar charts
                 },
-                {
-                  label: "Without Vendors",
-                  value: stats ? stats.clients_without_vendors : "--",
-                  color: "#dc2626",
-                  change: "-1% since last week",
-                },
-                {
-                  label: "Performance",
-                  value: stats
-                    ? `${(
-                        (stats.clients_with_vendors /
-                          (stats.total_clients || 1)) *
-                        100
-                      ).toFixed(2)}%`
-                    : "--",
-                  color: "#0891b2",
-                  change: "+3% since last month",
-                },
-              ].map((card, i) => (
-                <Grid item xs={12} sm={6} md={3} key={i}>
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      bgcolor: "#fff",
-                      textAlign: "center",
-                    }}
-                  >
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: "bold", color: card.color }}
-                    >
-                      {card.value}
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {card.label}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ display: "block", color: "gray", mt: 0.5 }}
-                    >
-                      {card.change}
-                    </Typography>
+                gap: GAP,
+                alignItems: "stretch",
+              }}
+            >
+              {/* LEFT COLUMN: stack both bar charts */}
+              <Box sx={{ display: "grid", gap: GAP }}>
+                <Card>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: TITLE_MB }}>
+                    Clients Added (Month-wise)
+                  </Typography>
+                  <Box ref={clientBarRef}>
+                    {clientBarW > 0 && (
+                      <BarChart
+                        width={clientBarW}
+                        height={CHART_H}
+                        xAxis={[{ scaleType: "band", data: clientsMonthlyBar.map((d) => d.m) }]}
+                        series={[{ data: clientsMonthlyBar.map((d) => d.v) }]}
+                      />
+                    )}
                   </Box>
-                </Grid>
-              ))}
-            </Grid>
+                </Card>
 
-            {/* Row 2: Charts */}
-            <Grid container spacing={3} sx={{ mt: 3 }}>
-              <Grid item xs={12} md={7}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 2, fontWeight: 600 }}
-                >
-                  Clients Growth
-                </Typography>
-                <BarChart
-                  xAxis={[{ scaleType: "band", data: barData.map((d) => d.month) }]}
-                  series={[{ data: barData.map((d) => d.clients) }]}
-                  height={300}
-                />
-              </Grid>
-              <Grid item xs={12} md={5}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 2, fontWeight: 600 }}
-                >
-                  Client Statistics
-                </Typography>
-                {loadingStats ? (
-                  <Typography>Loading...</Typography>
-                ) : (
-                  <PieChart series={[{ data: chartData }]} height={300} />
-                )}
-              </Grid>
-            </Grid>
+                <Card>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: TITLE_MB }}>
+                    Vendors Added (Month-wise)
+                  </Typography>
+                  <Box ref={vendorBarRef}>
+                    {vendorBarW > 0 && (
+                      <BarChart
+                        width={vendorBarW}
+                        height={CHART_H}
+                        xAxis={[{ scaleType: "band", data: vendorsMonthlyBar.map((d) => d.m) }]}
+                        series={[{ data: vendorsMonthlyBar.map((d) => d.v) }]}
+                      />
+                    )}
+                  </Box>
+                </Card>
+              </Box>
 
-            {/* Row 3: Lists */}
-            <Grid container spacing={3} sx={{ mt: 3 }}>
-              <Grid item xs={12} md={6}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 2, fontWeight: 600 }}
-                >
-                  Recently Added Clients
-                </Typography>
-                {recentClients.length === 0 ? (
-                  <Typography>No recent clients</Typography>
-                ) : (
-                  <ul style={{ margin: 0, paddingLeft: 20 }}>
-                    {recentClients.map((c) => (
-                      <li key={c.id}>
-                        <Typography variant="body2">{c.name}</Typography>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Grid>
+              {/* RIGHT COLUMN: client pie → vendor pie → recent list */}
+              <Box
+                sx={{
+                  display: "grid",
+                  gap: GAP,
+                  gridAutoRows: "min-content",
+                }}
+              >
+                <Card>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: TITLE_MB }}>
+                    Client Statistics
+                  </Typography>
+                  <Box ref={clientPieRef}>
+                    <PieChart
+                      width={clientPieW || 360}
+                      series={[{ data: clientPie }]}
+                      {...pieCommon}
+                    />
+                  </Box>
+                </Card>
 
-              {/* Reserved for Vendor Stats */}
-              <Grid item xs={12} md={6}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ mb: 2, fontWeight: 600 }}
-                >
-                  Vendor Statistics (Coming Soon)
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Placeholder for vendor metrics.
-                </Typography>
-              </Grid>
-            </Grid>
+                <Card>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: TITLE_MB }}>
+                    Vendor Status Split
+                  </Typography>
+                  <Box ref={vendorPieRef}>
+                    <PieChart
+                      width={vendorPieW || 360}
+                      series={[{ data: vendorPie }]}
+                      {...pieCommon}
+                    />
+                  </Box>
+                </Card>
+
+                <Card>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: TITLE_MB }}>
+                    Recently Added Clients
+                  </Typography>
+                  {recentClients.length ? (
+                    <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                      {recentClients.map((c) => (
+                        <li key={c.id}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.4 }}>
+                            {c.name}
+                          </Typography>
+                        </li>
+                      ))}
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No recent clients
+                    </Typography>
+                  )}
+                </Card>
+              </Box>
+            </Box>
           </>
         ) : (
           <Outlet />
@@ -290,6 +508,4 @@ const Dashboard = () => {
       </Box>
     </Box>
   );
-};
-
-export default Dashboard;
+}

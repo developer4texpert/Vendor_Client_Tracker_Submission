@@ -36,6 +36,11 @@ export const deleteClientAddress = (addrid) =>
     data: { addrid },
   });
 
+  export const searchClients = (filters) =>
+  coreApi.post("client/SearchClient/", filters, {
+    headers: { Authorization: `Bearer ${localStorage.getItem("access")}` },
+  });
+
 // === Client Vendors ===
 export const getVendorsForClient = (id) =>
   coreApi.get(`client/GetVendorsForClient/${id}/`, { headers: authHeader() });

@@ -19,6 +19,7 @@ urlpatterns = [
     path("GetClientAddresses/", GetClientAddressesView.as_view(), name="get-client-addresses"),
     path("UpdateClientAddress/", UpdateClientAddressView.as_view(), name="update-client-address"),
     path("DeleteClientAddress/", DeleteClientAddressView.as_view(), name="delete-client-address"),
+    path('SearchClient/', views.SearchClientView.as_view(), name='searchclient'),
     # Optional sanity endpoint:
     # path('GetVendor/', views.GetVendorView.as_view(), name='get-vendor'),
 ]
